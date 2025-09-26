@@ -8,7 +8,6 @@ import {
   useToolJavaScript,
   useUiChat,
 } from '@hashbrownai/react';import { useCallback, useEffect, useMemo, useState } from "react";
-import { useChat } from '@hashbrownai/react';
 import { Chat, prompt, s } from '@hashbrownai/core';
 import { RichMessage } from "./components/RichMessage";
 import usePersistState from "./hooks/usePersistState";
@@ -25,6 +24,16 @@ export default function Home() {
   const [sleep, setSleep] = usePersistState<number | null>(null, "sleep");
   const [todayBreakfast, setTodayBreakfast] = usePersistState<string | null>(null, "todayBreakfast");
   console.log(favorites)
+
+
+
+  
+  useEffect(()=>{
+    setMounted(true)
+  },[])
+
+
+
 // ------------------- HANDLERS -------------------
 
 // --- Favorites ---
@@ -434,6 +443,10 @@ Next time, respect your body and do your tasks if you want a real meal.</assista
   const isWorking = useMemo(() => {
     return isSending || isReceiving || isRunningToolCalls;
   }, [isSending, isReceiving, isRunningToolCalls]);
+
+
+
+  
   if (!mounted) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -442,9 +455,6 @@ Next time, respect your body and do your tasks if you want a real meal.</assista
     )
   }
 
-  useEffect(()=>{
-    setMounted(true)
-  },[])
   return (
       <div className="font-sans w-screen p-2 flex flex-row h-screen bg-white items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
         <div className='flex flex-2 flex-col p-2 gap-3 h-full w-full bg-green-200'>
