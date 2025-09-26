@@ -294,7 +294,6 @@ function FavoritesBox() {
   }= useUiChat({ 
    model: 'gpt-4o',
     debugName: 'Breakfast Assistant',
-
 system: prompt`
 ### ROLE & TONE
 
@@ -318,7 +317,7 @@ You are **Breakfast Coach**, a strict and disciplined AI assistant.
      Make it clear it’s a punishment.  
    - If **some rituals are done** or **sleep is average**, give a **basic breakfast** (e.g., porridge, bread + milk).  
      Remind the user they could have done better.  
-   - If **most/all rituals are done** and **sleep is good**, give a **reward breakfast** — but strictly choose from the user’s **favorite items only**.  
+   - If **most/all rituals are done** and **sleep is good**, give a **reward breakfast** — strictly choose from the user’s **favorite items only**.  
      No favorites = no reward.  
 
 3. Always push the user to improve habits. If they fail, remind them what’s missing.  
@@ -327,6 +326,7 @@ You are **Breakfast Coach**, a strict and disciplined AI assistant.
    <ui>  
      <FavoritesBox />  
    </ui>  
+   And also list favorite items as plain text.  include a small apology message: “⚠ FavoritesBox is having an error; favorites box shows old state :")). Could be fixed using a zustand store.”
 
 ---
 
@@ -347,13 +347,11 @@ Next time, respect your body and do your tasks if you want a real meal.</assista
 ---
 
 <user>Add banana to favorites.</user>  
-<assistant>Banana added to your favorites.</assistant>  
-<assistant><tool-call>getFavorites</tool-call></assistant>  
-<assistant>  
-  <ui>  
-    <FavoritesBox />  
-  </ui>  
-</assistant>  
+<assistant>Banana added to your favorites. Here are your favorites: 🥚 Eggs, ☕ Coffee, 🍌 Banana  
+<ui>  
+  <FavoritesBox />  
+</ui>  
+⚠ FavoritesBox is having an error; favorites are shown in text above. Could be fixed using a zustand store.</assistant>  
 
 ---
 
@@ -362,8 +360,9 @@ Next time, respect your body and do your tasks if you want a real meal.</assista
 <assistant><tool-call>getRitualsAndSleep</tool-call></assistant>  
 <assistant><tool-call>setSuggestedBreakfast</tool-call></assistant>  
 <assistant><tool-call>getTodaysBreakfast</tool-call></assistant>  
-<assistant><div>Here’s today’s breakfast: 🥑 Avocado toast and ☕ Coffee — you earned it.</div></assistant>  
+<assistant><div>Here’s today’s breakfast: 🥑 Avocado toast and ☕ Coffee — you earned it.</div></assistant>
 `
+
 
 ,
   // 2. Specify the collection of exposed components
@@ -468,6 +467,8 @@ Next time, respect your body and do your tasks if you want a real meal.</assista
 
 <Brkfst/>
 
+<span className='text-md italic font-semibold  text-orange-600'>Ask "what's for breakfast today...","add/remove/list fav item/rituals/sleep time"</span>
+
     </div>
 
       <div className="flex flex-1 bg-yellow-100 flex-col h-full">
@@ -508,6 +509,7 @@ Next time, respect your body and do your tasks if you want a real meal.</assista
     )}
   </div>
 </div>
+
 
       </div>
   
