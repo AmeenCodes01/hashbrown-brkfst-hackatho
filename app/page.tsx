@@ -434,7 +434,17 @@ Next time, respect your body and do your tasks if you want a real meal.</assista
   const isWorking = useMemo(() => {
     return isSending || isReceiving || isRunningToolCalls;
   }, [isSending, isReceiving, isRunningToolCalls]);
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-red-700">Loading...</div>
+      </div>
+    )
+  }
 
+  useEffect(()=>{
+    setMounted(true)
+  },[])
   return (
       <div className="font-sans w-screen p-2 flex flex-row h-screen bg-white items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
         <div className='flex flex-2 flex-col p-2 gap-3 h-full w-full bg-green-200'>
