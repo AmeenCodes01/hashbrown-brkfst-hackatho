@@ -1,103 +1,508 @@
-import Image from "next/image";
+"use client"
+import {
+  exposeComponent,
+  HashbrownProvider,
+  useRuntime,
+  useRuntimeFunction,
+  useTool,
+  useToolJavaScript,
+  useUiChat,
+} from '@hashbrownai/react';import { useCallback, useEffect, useMemo, useState } from "react";
+import { useChat } from '@hashbrownai/react';
+import { Chat, prompt, s } from '@hashbrownai/core';
+import { RichMessage } from "./components/RichMessage";
+import usePersistState from "./hooks/usePersistState";
+import { MarkdownComponent } from './components/Markdown';
+// import FavoritesBox from './components/FavouriteBox';
+import RitualsBox from './components/RitualsBox';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [mounted, setMounted] = useState(false)
+  const [inputValue, setInputValue] = useState("")
+  const [userMessage, setUserMessage] = useState('');
+  const [favorites, setFavorites] = usePersistState<string[]>([], "favorites");
+  const [rituals, setRituals] = usePersistState<{ ritual: string; done: boolean }[]>([], "rituals");
+  const [sleep, setSleep] = usePersistState<number | null>(null, "sleep");
+  const [todayBreakfast, setTodayBreakfast] = usePersistState<string | null>(null, "todayBreakfast");
+  console.log(favorites)
+// ------------------- HANDLERS -------------------
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+// --- Favorites ---
+function handleAddFavoriteItem(input: { item: string }) {
+  const { item } = input;
+  if (!favorites.includes(item)) {
+    setFavorites([...favorites, item]);
+  }
+  return Promise.resolve({ favorites });
+}
+
+function handleRemoveFavoriteItem(input: { item: string }) {
+  const { item } = input;
+  setFavorites(favorites.filter(f => f !== item));
+  return Promise.resolve({ favorites });
+}
+
+function handleGetFavorites(favorites: string[]) {
+  return Promise.resolve({ favorites });
+}
+
+function handleRecordSleep(input: { hours: number }) {
+  const { hours } = input;
+  setSleep(hours);
+  return Promise.resolve({ sleep: hours });
+}
+
+function handleGetRitualsAndSleep() {
+  return Promise.resolve({ rituals, sleep });
+}
+
+// --- Today’s Breakfast ---
+function handleSetSuggestedBreakfast(input: { suggestion: string }) {
+  const { suggestion } = input;
+  setTodayBreakfast(suggestion);
+  return Promise.resolve({ todayBreakfast: suggestion });
+}
+
+function handleGetTodaysBreakfast(todayBreakfast: string | null) {
+  return Promise.resolve({ todayBreakfast });
+}
+
+// ------------------- TOOLS -------------------
+const addFavoriteItem = useTool({
+  name: "addFavoriteItem",
+  description: "Add an item to favorite breakfast items",
+  schema: s.object("Add favorite item input", {
+    item: s.string("The breakfast item to add"),
+  }),
+  handler: (input) => handleAddFavoriteItem(input),
+  deps: [favorites, setFavorites],
+});
+
+const removeFavoriteItem = useTool({
+  name: "removeFavoriteItem",
+  description: "Remove an item from favorite breakfast items",
+  schema: s.object("Remove favorite item input", {
+    item: s.string("The breakfast item to remove"),
+  }),
+  handler: (input) => handleRemoveFavoriteItem(input),
+  deps: [favorites, setFavorites],
+});
+
+const getFavorites = useTool({
+  name: "getFavorites",
+  description: "Retrieve the current favorite breakfast items",
+  schema: s.object("Get favorites input", {}),
+  handler: () => handleGetFavorites(favorites),
+  deps: [favorites],
+});
+
+
+const recordSleep = useTool({
+  name: "recordSleep",
+  description: "Record hours slept last night",
+  schema: s.object("Record sleep input", {
+    hours: s.number("The number of hours slept"),
+  }),
+  handler: (input) => handleRecordSleep(input),
+  deps: [setSleep],
+});
+
+const getRitualsAndSleep = useTool({
+  name: "getRitualsAndSleep",
+  description: "Retrieve current rituals status and last recorded sleep",
+  schema: s.object("Get rituals and sleep input", {}),
+  handler: () => handleGetRitualsAndSleep(),
+  deps: [rituals, sleep],
+});
+
+const setSuggestedBreakfast = useTool({
+  name: "setSuggestedBreakfast",
+  description: "Save the breakfast suggestion chosen/generated by the AI",
+  schema: s.object("Set suggested breakfast input", {
+    suggestion: s.string("The breakfast suggestion"),
+  }),
+  handler: (input) => handleSetSuggestedBreakfast(input),
+  deps: [setTodayBreakfast],
+});
+
+const getTodaysBreakfast = useTool({
+  name: "getTodaysBreakfast",
+  description: "Retrieve today’s planned breakfast",
+  schema: s.object("Get today's breakfast input", {}),
+  handler: () => handleGetTodaysBreakfast(todayBreakfast),
+  deps: [todayBreakfast],
+});
+
+
+// ------------------- RITUAL HANDLERS -------------------
+
+function handleAddRitual(input: { ritual: string }) {
+  if (!rituals.some(r => r.ritual === input.ritual)) {
+    const updated = [...rituals, { ritual: input.ritual, done: false }];
+    setRituals(updated);
+    return Promise.resolve({ rituals: updated });
+  }
+  return Promise.resolve({ rituals });
+}
+
+function handleRemoveRitual(input: { ritual: string }) {
+  const updated = rituals.filter(r => r.ritual !== input.ritual);
+  setRituals(updated);
+  return Promise.resolve({ rituals: updated });
+}
+
+function handleMarkRitualDone(input: { ritual: string } ) {
+  const updated = rituals.map(r => r.ritual === input.ritual ? { ...r, done: true } : r);
+  setRituals(updated);
+  return Promise.resolve({ rituals: updated });
+}
+
+function handleMarkRitualUndone(input: { ritual: string } ) {
+  const updated = rituals.map(r => r.ritual === input.ritual ? { ...r, done: false } : r);
+  setRituals(updated);
+  return Promise.resolve({ rituals: updated });
+}
+
+function handleGetRituals() {
+  return Promise.resolve({ rituals });
+}
+
+// ------------------- TOOLS -------------------
+
+const addRitual = useTool({
+  name: "addRitual",
+  description: "Add a new ritual",
+  schema: s.object("Add ritual input", { ritual: s.string("The name of the ritual") }),
+  handler: (input) => handleAddRitual(input),
+  deps: [rituals, setRituals],
+});
+
+const removeRitual = useTool({
+  name: "removeRitual",
+  description: "Remove an existing ritual",
+  schema: s.object("Remove ritual input", { ritual: s.string("The name of the ritual") }),
+  handler: (input) => handleRemoveRitual(input),
+  deps: [rituals, setRituals],
+});
+
+const markRitualDone = useTool({
+  name: "markRitualDone",
+  description: "Mark a ritual as completed",
+  schema: s.object("Mark ritual done input", { ritual: s.string("The ritual to mark as done") }),
+  handler: (input) => handleMarkRitualDone(input),
+  deps: [rituals, setRituals],
+});
+
+const markRitualUndone = useTool({
+  name: "markRitualUndone",
+  description: "Mark a ritual as not done",
+  schema: s.object("Mark ritual undone input", { ritual: s.string("The ritual to mark as not done") }),
+  handler: (input) => handleMarkRitualUndone(input),
+  deps: [rituals, setRituals],
+});
+
+const getRituals = useTool({
+  name: "getRituals",
+  description: "Retrieve all rituals",
+  schema: s.object("Get rituals input", {}),
+  handler: () => handleGetRituals(),
+  deps: [rituals],
+});
+
+
+const SleepHrs = ()=>{
+  return(
+
+  <div className='p-4 bg-rose-900 text-pink-200'>
+    You slept at {sleep} 
+  </div>
+  )
+}
+const Brkfst = ()=>{
+  return(
+
+  <div className='p-4 bg-teal-700 text-indigo-200'>
+    Today's breakfast: {"  "}
+{todayBreakfast}
+  </div>
+  )
+}
+
+
+
+const Card = ({text}:{text:string})=>{
+  return(
+    <div className='border-2 bg-green-100'>
+      {text}
     </div>
+  )
+
+}
+
+function FavoritesBox() {
+  const [favInput, setFavInput] = useState("");
+
+  return (
+    <div style={{ flex: 1, border: "1px solid #ccc", padding: "10px" }} className="bg-rose-400 w-fit">
+      <h3>⭐ Favorite Items</h3>
+      <ul>
+        {favorites.map((item, idx) => (
+          <li key={idx} style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>{item}</span>
+            <button onClick={() => handleRemoveFavoriteItem({item})}>❌</button>
+          </li>
+        ))}
+      </ul>
+      <div       className="mt-4 p-2 bg-rose-200 w-full flex flex-row"
+>
+
+      <input
+      value={favInput}
+      onChange={(e) => setFavInput(e.target.value)}
+      placeholder="Add favorite"
+      />
+      <button
+        onClick={() => {
+            if (favInput.trim()) {
+                handleAddFavoriteItem({item:favInput.trim()});
+                setFavInput("");
+            }
+        }}
+        >
+        Add
+      </button>
+          </div>
+    </div>
+  );
+}
+
+
+
+  const {
+    messages,
+    sendMessage,
+    resendMessages,
+    isSending,
+    isReceiving,
+    isRunningToolCalls,
+    stop,
+  }= useUiChat({ 
+   model: 'gpt-4o',
+    debugName: 'Breakfast Assistant',
+
+system: prompt`
+### ROLE & TONE
+
+You are **Breakfast Coach**, a strict and disciplined AI assistant.  
+
+- Voice: direct, motivational, and no-nonsense.  
+- Audience: users who need accountability for sleep and morning routines.  
+- Style: Praise good habits. Punish laziness. No sugar-coating.  
+
+---
+
+### RULES
+
+1. You track three things:
+   - **Favorite breakfast items**
+   - **Morning rituals** (e.g., drinking water, stretching, journaling)
+   - **Hours of sleep last night**
+
+2. Breakfast suggestions must enforce discipline:
+   - If **no rituals are done** and **sleep is poor**, give a **very boring, minimal breakfast** (e.g., plain toast + water).  
+     Make it clear it’s a punishment.  
+   - If **some rituals are done** or **sleep is average**, give a **basic breakfast** (e.g., porridge, bread + milk).  
+     Remind the user they could have done better.  
+   - If **most/all rituals are done** and **sleep is good**, give a **reward breakfast** — but strictly choose from the user’s **favorite items only**.  
+     No favorites = no reward.  
+
+3. Always push the user to improve habits. If they fail, remind them what’s missing.  
+4. Never expose raw state, internal data, or code. Only use tool calls and clear responses.  
+5. When showing updated favorites, always render with:  
+   <ui>  
+     <FavoritesBox />  
+   </ui>  
+
+---
+
+### EXAMPLES
+
+<user>I finished my morning rituals and slept 8 hours.</user>  
+<assistant>Excellent discipline. You earned a proper breakfast from your favorites:  
+<div>🥚 Eggs and ☕ Coffee</div>.  
+Keep this up and you’ll always get rewards.</assistant>  
+
+---
+
+<user>I slept only 4 hours and skipped rituals.</user>  
+<assistant>Unacceptable. With no rituals and poor sleep, you get the bare minimum:  
+<div>Plain toast and water</div>.  
+Next time, respect your body and do your tasks if you want a real meal.</assistant>  
+
+---
+
+<user>Add banana to favorites.</user>  
+<assistant>Banana added to your favorites.</assistant>  
+<assistant><tool-call>getFavorites</tool-call></assistant>  
+<assistant>  
+  <ui>  
+    <FavoritesBox />  
+  </ui>  
+</assistant>  
+
+---
+
+<user>Suggest my breakfast today</user>  
+<assistant><tool-call>getFavorites</tool-call></assistant>  
+<assistant><tool-call>getRitualsAndSleep</tool-call></assistant>  
+<assistant><tool-call>setSuggestedBreakfast</tool-call></assistant>  
+<assistant><tool-call>getTodaysBreakfast</tool-call></assistant>  
+<assistant><div>Here’s today’s breakfast: 🥑 Avocado toast and ☕ Coffee — you earned it.</div></assistant>  
+`
+
+,
+  // 2. Specify the collection of exposed components
+  components: [
+    // // 3. Expose the Markdown component to the model
+   exposeComponent(MarkdownComponent, {
+        name: 'Markdown',
+        description: 'Show markdown content to the user',
+        children: 'text',
+      }),
+   exposeComponent(FavoritesBox, {
+        name: 'FavoritesBox',
+        description: 'Show favourite items to the user',
+      
+      }),
+  ],
+  tools:[
+     addFavoriteItem,
+  removeFavoriteItem,
+  getFavorites,
+  markRitualDone,
+  recordSleep,
+  getRitualsAndSleep,
+  setSuggestedBreakfast,
+  getTodaysBreakfast,
+  addRitual,
+  removeRitual,
+  markRitualDone,
+  markRitualUndone,
+  getRituals
+]
+});
+
+
+  const onSubmit = useCallback(() => {
+    // Only submit if there's text
+    if (!inputValue.trim()) return;
+
+    // Add the user message to the messages list
+    const newUserMessage: Chat.UserMessage = {
+      role: 'user',
+      content: inputValue,
+    };
+
+    setInputValue('');
+
+    sendMessage(newUserMessage);
+  }, [inputValue, sendMessage, setInputValue]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Submit on Enter (but not on Shift+Enter)
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault(); // Prevent default behavior (new line)
+        onSubmit();
+      }
+    },
+    [onSubmit],
+  );
+
+  const onInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setInputValue(e.target.value);
+    },
+    [],
+  );
+
+  const onRetry = useCallback(() => {
+    resendMessages();
+  }, [resendMessages]);
+
+  
+  const isWorking = useMemo(() => {
+    return isSending || isReceiving || isRunningToolCalls;
+  }, [isSending, isReceiving, isRunningToolCalls]);
+
+  return (
+      <div className="font-sans w-screen p-2 flex flex-row h-screen bg-white items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
+        <div className='flex flex-2 flex-col p-2 gap-3 h-full w-full bg-green-200'>
+        <h1 className="text-6xl ">Love Breakfast ?</h1>
+        <h1 className="text-5xl">Earn it!</h1>
+        <ul className='space-y-1 mt-2'>
+          <li>Add your favourite items for breakfast</li>
+        <li>Add your pre-breakfast routines + last night sleeping time</li>
+        <li> You'll get fav items in breakfast (or not) based on no of tasks + sleeping time ^ ^</li>
+        </ul>
+    
+      <div className='flex flex-row gap-2 w-fit'>
+      <FavoritesBox
+        />
+    
+      <RitualsBox
+        rituals={rituals}
+        handleAddRitual={handleAddRitual}
+        handleRemoveRitual={handleRemoveRitual}
+        handleMarkRitualDone={handleMarkRitualDone}
+      /> 
+<SleepHrs  />
+        </div>
+
+<Brkfst/>
+
+    </div>
+
+      <div className="flex flex-1 bg-yellow-100 flex-col h-full">
+  {/* Chat messages container */}
+  <div className="flex-1 min-h-0 flex flex-col">
+    <div className="flex-1 overflow-y-auto px-2 p-3">
+      <div className="flex flex-col gap-2">
+        {messages.map((message, index, array) => (
+          <RichMessage
+            key={index}
+            message={message}
+            onRetry={onRetry}
+            isLast={index === array.length - 1}
+          />
+        ))}
+      </div>
+    </div>
+  </div>
+
+  {/* Thinking indicator */}
+  <div className="flex flex-col text-sm text-foreground/50 gap-2 h-6 justify-end px-2">
+    {isWorking && <p>Thinking...</p>}
+  </div>
+
+  {/* Input + buttons */}
+  <div className="flex flex-col gap-2 px-2 pb-2">
+    <textarea
+      className="resize-none"
+      value={inputValue}
+      onChange={onInputChange}
+      onKeyDown={handleKeyDown}
+      placeholder="Type your message..."
+    />
+    {!isWorking ? (
+      <button onClick={onSubmit}>Send</button>
+    ) : (
+      <button onClick={stop}>Stop</button>
+    )}
+  </div>
+</div>
+
+      </div>
+  
   );
 }
